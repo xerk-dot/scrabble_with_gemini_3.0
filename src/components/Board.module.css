@@ -1,0 +1,82 @@
+.boardContainer {
+    padding: 10px;
+    background-color: #5d4037;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    display: inline-block;
+}
+
+.theme1Board {
+    background: #080708;
+    border: 3px solid #3772ff;
+    border-radius: 0;
+    box-shadow: none;
+    position: relative;
+    padding: 15px;
+}
+
+.theme1Board::before {
+    display: none;
+}
+
+.theme1Board::after {
+    content: 'TACTICAL DISPLAY';
+    position: absolute;
+    top: -25px;
+    left: 0;
+    color: #fdca40;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 3px;
+    text-shadow: none;
+}
+
+.board {
+    display: flex;
+    flex-direction: column;
+    background-color: #333;
+    gap: 1px;
+    border: 1px solid #333;
+}
+
+.theme1Board .board {
+    background-color: #080708;
+    border: 2px solid #3772ff;
+    box-shadow: none;
+}
+
+.theme2Board {
+    background: #242325;
+    border: 3px solid #bbb891;
+    border-radius: 0;
+    box-shadow: none;
+    position: relative;
+    padding: 15px;
+}
+
+.theme2Board::before {
+    display: none;
+}
+
+.theme2Board::after {
+    content: 'RETRO SYSTEM';
+    position: absolute;
+    top: -25px;
+    left: 0;
+    color: #dc965a;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 3px;
+    text-shadow: none;
+}
+
+.theme2Board .board {
+    background-color: #242325;
+    border: 2px solid #bbb891;
+    box-shadow: none;
+}
+
+.row {
+    display: flex;
+    gap: 1px;
+}

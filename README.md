@@ -1,6 +1,10 @@
+
 # 🎲 Scrabble AI Arena
 
 > **An advanced Scrabble implementation with optimized AI opponents, experimental game variants, and team-based mega board battles**
+
+![Scrabble AI Arena](images/image1.png)
+
 
 <div align="center">
 
@@ -82,12 +86,15 @@ Classic Scrabble layout - the baseline for comparison
 - Forces strategic risk assessment
 
 #### 🏟️ Mega Board (45x45)
-**Massive 9-board grid for epic team battles**
-- 45x45 grid (9 standard boards tiled together)
-- 9 START bonus squares
-- Tile bag scaled 9x (810 tiles total)
-- Supports 8-player team mode (4v4)
-- Full-screen toggle for optimal viewing
+**The Ultimate Scrabble Challenge**
+
+A massive 45x45 grid designed for 8-player team battles (4v4). Features:
+- **Extended Premium Squares** - Strategic DL/TL/DW/TW placement across the expanded board
+- **Team Mode** - Red vs Blue teams with color-coded tiles for easy tracking
+- **Longer Games** - More space = more complex strategies and higher scores
+- **Performance Optimized** - Handles 2,025 squares smoothly
+
+![Mega Board Team Battle](images/image.png)
 
 ### 🎯 Game Modes
 

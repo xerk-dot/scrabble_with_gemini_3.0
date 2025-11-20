@@ -5,9 +5,10 @@ import styles from './Board.module.css';
 
 interface BoardProps {
     theme?: 'classic' | 'theme1' | 'theme2';
+    showTeamColors?: boolean;
 }
 
-export const Board: React.FC<BoardProps> = ({ theme = 'classic' }) => {
+export const Board: React.FC<BoardProps> = ({ theme = 'classic', showTeamColors = true }) => {
     const { gameState, currentMoveTiles } = useGame();
     const { board } = gameState;
 
@@ -25,8 +26,8 @@ export const Board: React.FC<BoardProps> = ({ theme = 'classic' }) => {
                                 <Square
                                     key={`${x}-${y}`}
                                     square={displaySquare}
-                                    players={gameState.players}
-                                    gameMode={gameState.gameMode}
+                                    players={showTeamColors ? gameState.players : undefined}
+                                    gameMode={showTeamColors ? gameState.gameMode : undefined}
                                 />
                             );
                         })}

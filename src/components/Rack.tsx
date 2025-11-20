@@ -4,7 +4,11 @@ import { Tile } from './Tile';
 import { useDroppable } from '@dnd-kit/core';
 import styles from './Rack.module.css';
 
-export const Rack: React.FC = () => {
+interface RackProps {
+    showTeamColors?: boolean;
+}
+
+export const Rack: React.FC<RackProps> = ({ showTeamColors = true }) => {
     const { gameState } = useGame();
     const player = gameState.players[0]; // Assuming human is always index 0 for now
 
@@ -24,8 +28,8 @@ export const Rack: React.FC = () => {
                         key={tile.id}
                         tile={tile}
                         id={tile.id}
-                        players={gameState.players}
-                        gameMode={gameState.gameMode}
+                        players={showTeamColors ? gameState.players : undefined}
+                        gameMode={showTeamColors ? gameState.gameMode : undefined}
                     />
                 ))}
             </div>

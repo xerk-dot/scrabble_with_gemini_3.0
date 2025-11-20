@@ -20,6 +20,7 @@ export const Game: React.FC = () => {
     const [mode, setMode] = useState<'HUMAN_VS_AI' | 'AI_VS_AI' | 'TEAMS'>('HUMAN_VS_AI');
     const [aiDifficulty2, setAiDifficulty2] = useState<'EASY' | 'MEDIUM' | 'HARD'>('HARD');
     const [theme, setTheme] = useState<'classic' | 'theme1' | 'theme2'>('classic');
+    const [showTeamColors, setShowTeamColors] = useState(true); // Toggle for team tile colors
 
     // 4x4 Team AI Configuration (8 AIs total)
     const [teamAiConfigs, setTeamAiConfigs] = useState<Array<{
@@ -167,7 +168,10 @@ export const Game: React.FC = () => {
                                     transition: isDragging ? 'none' : 'transform 0.1s ease-out'
                                 }}
                             >
-                                <Board theme={theme} />
+                                <Board
+                                    theme={theme}
+                                    showTeamColors={showTeamColors}
+                                />
                             </div>
                         </div>
                     </div>
@@ -215,7 +219,7 @@ export const Game: React.FC = () => {
                         </div>
                         {/* Rack - Only show if not in AI-only modes */}
                         {mode !== 'AI_VS_AI' && mode !== 'TEAMS' && (
-                            <Rack />
+                            <Rack showTeamColors={showTeamColors} />
                         )}
                         {movePreview && (
                             <div className={`${styles.preview} ${movePreview.isValid ? styles.previewValid : styles.previewInvalid}`}>
@@ -287,6 +291,16 @@ export const Game: React.FC = () => {
                             {isTeams && selectedVariant === 'MEGA' && (
                                 <div className={styles.teamConfig}>
                                     <h3>Team AI Configuration</h3>
+
+                                    <label className={styles.teamColorToggle}>
+                                        <input
+                                            type="checkbox"
+                                            checked={showTeamColors}
+                                            onChange={(e) => setShowTeamColors(e.target.checked)}
+                                        />
+                                        Show Team Colors on Tiles
+                                    </label>
+
                                     <div className={styles.teamConfigGrid}>
                                         {['Red', 'Blue'].map((team, teamIdx) => (
                                             <div key={team} className={styles.teamColumn}>

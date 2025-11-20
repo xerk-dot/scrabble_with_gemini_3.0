@@ -847,3 +847,24 @@
 .checkboxLabel:hover {
     color: #ecf0f1;
 }
+
+.teamColorToggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    color: #ecf0f1;
+    cursor: pointer;
+    user-select: none;
+}
+
+.teamColorToggle input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
+.teamColorToggle:hover {
+    color: #3498db;
+}

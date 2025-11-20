@@ -68,10 +68,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Interleave players: Red 1, Blue 1, Red 2, Blue 2...
             for (let i = 0; i < 4; i++) {
                 for (const team of teams) {
-                    const { drawn, newBag } = drawTiles(bag, 7);
+                    const playerId = `p${playerIndex++}`;
+                    const { drawn, newBag } = drawTiles(bag, 7, playerId);
                     bag = newBag;
                     players.push({
-                        id: `p${playerIndex++}`,
+                        id: playerId,
                         name: `${team} AI ${i + 1}`,
                         rack: drawn,
                         score: 0,
@@ -83,13 +84,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         } else {
             // Standard 2 player setup
-            const { drawn: p1Tiles, newBag: bagAfterP1 } = drawTiles(bag, 7);
-            const { drawn: p2Tiles, newBag: bagAfterP2 } = drawTiles(bagAfterP1, 7);
+            const player1Id = 'p0';
+            const player2Id = 'p1';
+
+            const { drawn: p1Tiles, newBag: bagAfterP1 } = drawTiles(bag, 7, player1Id);
+            const { drawn: p2Tiles, newBag: bagAfterP2 } = drawTiles(bagAfterP1, 7, player2Id);
             bag = bagAfterP2;
 
             const player1: Player = {
-                id: 'p1',
-                name: mode === 'AI_VS_AI' ? 'AI 1' : 'Human',
+                id: player1Id,
+                name: mode === 'AI_VS_AI' ? 'AI 1' : 'You',
                 rack: p1Tiles,
                 score: 0,
                 isAi: mode === 'AI_VS_AI',
@@ -98,8 +102,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
 
             const player2: Player = {
-                id: 'p2',
-                name: mode === 'AI_VS_AI' ? 'AI 2' : 'AI',
+                id: player2Id,
+                name: 'AI 2',
                 rack: p2Tiles,
                 score: 0,
                 isAi: true,
@@ -145,6 +149,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         currentPlayer.difficulty || 'MEDIUM'
                     );
 
+                    // Helper function to check if any teammate can play
+                    const canTeammatePlay = async (teamId: string, currentPlayerId: string) => {
+                        const teammates = gameState.players.filter(
+                            p => p.teamId === teamId && p.id !== currentPlayerId && p.isAi && !p.resigned
+                        );
+                        for (const teammate of teammates) {
+                            const teammateMove = await generateAiMove(
+                                gameState.board,
+                                teammate.rack,
+                                teammate.difficulty || 'MEDIUM'
+                            );
+                            if (teammateMove) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    };
+
                     if (bestMove) {
                         // Apply move
                         const newBoard = [...gameState.board];
@@ -155,7 +177,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                         // Refill rack
                         const tilesNeeded = 7 - (currentPlayer.rack.length - bestMove.tiles.length);
-                        const { drawn, newBag } = drawTiles(gameState.bag, tilesNeeded);
+                        const { drawn, newBag } = drawTiles(gameState.bag, tilesNeeded, currentPlayer.id);
 
                         // Remove used tiles from rack
                         const usedIds = new Set(bestMove.tiles.map(t => t.tile.id));
@@ -196,50 +218,71 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                         setMessage(`${currentPlayer.name} played ${bestMove.word} for ${bestMove.score} points.`);
                     } else {
-                        // AI has no valid moves - resign
-                        const newPlayers = [...gameState.players];
-                        newPlayers[gameState.currentPlayerIndex] = {
-                            ...currentPlayer,
-                            resigned: true
-                        };
+                        // AI has no valid moves
+                        // In TEAMS mode, check if any teammates can still play before resigning
+                        let shouldResign = true;
 
-                        // Check if all players in a team have resigned
-                        // Actually, rule is: "if every player in the team resigns the team then resigns"
-                        // And game ends when all players resign? Or when all teams resign?
-                        // Usually game ends when all players pass/resign.
+                        if (gameState.gameMode === 'TEAMS' && currentPlayer.teamId) {
+                            // Check if any teammate (not resigned) might have valid moves
+                            const teammates = gameState.players.filter(
+                                p => p.teamId === currentPlayer.teamId &&
+                                    !p.resigned &&
+                                    p.id !== currentPlayer.id
+                            );
 
-                        const allResigned = newPlayers.every(p => p.resigned);
-
-                        if (allResigned) {
-                            // Game over - find winner
-                            let winnerId: string | null = null;
-
-                            if (gameState.gameMode === 'TEAMS') {
-                                // Find winning team
-                                const winningTeam = Object.entries(gameState.teamScores || {}).reduce((a, b) => a[1] > b[1] ? a : b)[0];
-                                winnerId = winningTeam;
-                                setMessage(`Game Over! Team ${winningTeam} wins!`);
-                            } else {
-                                const winner = newPlayers.reduce((prev, current) =>
-                                    (prev.score > current.score) ? prev : current
-                                );
-                                winnerId = winner.id;
-                                setMessage(`Game Over! ${winner.name} wins with ${winner.score} points!`);
+                            // If there are active teammates, don't resign yet - just pass
+                            if (teammates.length > 0) {
+                                shouldResign = false;
+                                setGameState(prev => ({
+                                    ...prev,
+                                    currentPlayerIndex: (prev.currentPlayerIndex + 1) % prev.players.length
+                                }));
+                                setMessage(`${currentPlayer.name} passes (no valid moves, but teammates may still play).`);
+                                return;
                             }
+                        }
 
-                            setGameState(prev => ({
-                                ...prev,
-                                players: newPlayers,
-                                gameOver: true,
-                                winner: winnerId
-                            }));
-                        } else {
-                            setGameState(prev => ({
-                                ...prev,
-                                players: newPlayers,
-                                currentPlayerIndex: (prev.currentPlayerIndex + 1) % prev.players.length
-                            }));
-                            setMessage(`${currentPlayer.name} has resigned (no valid moves).`);
+                        // Resign if no teammates or not in TEAMS mode
+                        if (shouldResign) {
+                            const newPlayers = [...gameState.players];
+                            newPlayers[gameState.currentPlayerIndex] = {
+                                ...currentPlayer,
+                                resigned: true
+                            };
+
+                            const allResigned = newPlayers.every(p => p.resigned);
+
+                            if (allResigned) {
+                                // Game over - find winner
+                                let winnerId: string | null = null;
+
+                                if (gameState.gameMode === 'TEAMS') {
+                                    // Find winning team
+                                    const winningTeam = Object.entries(gameState.teamScores || {}).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+                                    winnerId = winningTeam;
+                                    setMessage(`Game Over! Team ${winningTeam} wins!`);
+                                } else {
+                                    const winner = newPlayers.reduce((prev, current) =>
+                                        (prev.score > current.score) ? prev : current
+                                    );
+                                    winnerId = winner.id;
+                                    setMessage(`Game Over! ${winner.name} wins with ${winner.score} points!`);
+                                }
+
+                                setGameState(prev => ({
+                                    ...prev,
+                                    players: newPlayers,
+                                    gameOver: true,
+                                    winner: winnerId
+                                }));
+                            } else {
+                                setGameState(prev => ({
+                                    ...prev,
+                                    players: newPlayers,
+                                    currentPlayerIndex: (prev.currentPlayerIndex + 1) % prev.players.length
+                                }));
+                                setMessage(`${currentPlayer.name} has resigned (no valid moves).`);
+                            }
                         }
                     }
                 } catch (error) {
@@ -455,7 +498,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // 5. Refill rack
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
         const tilesNeeded = 7 - currentPlayer.rack.length;
-        const { drawn, newBag } = drawTiles(gameState.bag, tilesNeeded);
+        const { drawn, newBag } = drawTiles(gameState.bag, tilesNeeded, currentPlayer.id);
         const newRack = [...currentPlayer.rack, ...drawn];
 
         const newPlayers = [...gameState.players];

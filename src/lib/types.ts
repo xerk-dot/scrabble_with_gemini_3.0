@@ -6,6 +6,7 @@ export interface Tile {
     score: number;
     isBlank?: boolean;
     letterOverride?: string; // For blank tiles played on board
+    playerId?: string; // Track which player owns/placed this tile
 }
 
 export interface Square {

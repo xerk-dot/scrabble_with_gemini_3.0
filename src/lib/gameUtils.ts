@@ -86,8 +86,19 @@ export const createTileBag = (variant: BoardVariant = 'STANDARD'): Tile[] => {
     return bag;
 };
 
-export const drawTiles = (bag: Tile[], count: number): { drawn: Tile[]; newBag: Tile[] } => {
-    const drawn = bag.slice(0, count);
-    const newBag = bag.slice(count);
+export const drawTiles = (bag: Tile[], count: number, playerId?: string): { drawn: Tile[]; newBag: Tile[] } => {
+    const drawn: Tile[] = [];
+    const newBag = [...bag];
+
+    for (let i = 0; i < count && newBag.length > 0; i++) {
+        const randomIndex = Math.floor(Math.random() * newBag.length);
+        const tile = newBag.splice(randomIndex, 1)[0];
+        // Assign playerId if provided
+        if (playerId) {
+            tile.playerId = playerId;
+        }
+        drawn.push(tile);
+    }
+
     return { drawn, newBag };
 };

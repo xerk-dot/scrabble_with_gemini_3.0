@@ -20,7 +20,13 @@ export const Rack: React.FC = () => {
         <div className={styles.rackContainer}>
             <div ref={setNodeRef} className={styles.rack}>
                 {player.rack.map((tile) => (
-                    <Tile key={tile.id} tile={tile} id={tile.id} />
+                    <Tile
+                        key={tile.id}
+                        tile={tile}
+                        id={tile.id}
+                        players={gameState.players}
+                        gameMode={gameState.gameMode}
+                    />
                 ))}
             </div>
             <div className={styles.rackControls}>

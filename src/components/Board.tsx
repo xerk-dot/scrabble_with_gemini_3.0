@@ -21,7 +21,14 @@ export const Board: React.FC<BoardProps> = ({ theme = 'classic' }) => {
                         {row.map((square, x) => {
                             const tempTile = currentMoveTiles.find(t => t.x === x && t.y === y);
                             const displaySquare = tempTile ? { ...square, tile: tempTile.tile } : square;
-                            return <Square key={`${x}-${y}`} square={displaySquare} />;
+                            return (
+                                <Square
+                                    key={`${x}-${y}`}
+                                    square={displaySquare}
+                                    players={gameState.players}
+                                    gameMode={gameState.gameMode}
+                                />
+                            );
                         })}
                     </div>
                 ))}

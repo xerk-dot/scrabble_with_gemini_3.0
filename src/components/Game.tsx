@@ -8,6 +8,7 @@ import { Tile as DraggableTile } from './Tile';
 import { useGame } from '@/context/GameContext';
 import { BoardVariant } from '@/lib/constants';
 import { Tile } from '@/lib/types';
+import { getPlayerColor } from '@/lib/teamColors';
 import styles from './Game.module.css';
 
 export const Game: React.FC = () => {
@@ -165,24 +166,30 @@ export const Game: React.FC = () => {
                     <div className={styles.controlsSection}>
                         <div className={styles.scoreBoard}>
                             <h2>Scores</h2>
-                            {gameState.players.map((player, index) => (
-                                <div key={player.id} style={{ marginBottom: '10px' }}>
-                                    <div className={index === gameState.currentPlayerIndex ? styles.activePlayer : ''}>
-                                        {player.name}: {player.score}
-                                        {player.teamId && ` (${player.teamId})`}
-                                    </div>
-                                    {/* Display AI Rack */}
-                                    {player.isAi && (
-                                        <div className={styles.miniRack}>
-                                            {player.rack.map((tile, i) => (
-                                                <span key={i} className={styles.miniTile}>
-                                                    {gameState.gameMode === 'HUMAN_VS_AI' ? '◼' : tile.letter}
-                                                </span>
-                                            ))}
+                            {gameState.players.map((player, index) => {
+                                const playerColor = gameState.gameMode === 'TEAMS' ? getPlayerColor(player.teamId, index) : undefined;
+                                return (
+                                    <div key={player.id} style={{ marginBottom: '10px' }}>
+                                        <div
+                                            className={index === gameState.currentPlayerIndex ? styles.activePlayer : ''}
+                                            style={playerColor ? { color: playerColor, fontWeight: 'bold' } : {}}
+                                        >
+                                            {player.name}: {player.score}
+                                            {player.teamId && ` (${player.teamId})`}
                                         </div>
-                                    )}
-                                </div>
-                            ))}
+                                        {/* Display AI Rack */}
+                                        {player.isAi && (
+                                            <div className={styles.miniRack}>
+                                                {player.rack.map((tile, i) => (
+                                                    <span key={i} className={styles.miniTile}>
+                                                        {gameState.gameMode === 'HUMAN_VS_AI' ? '◼' : tile.letter}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                             {gameState.teamScores && (
                                 <div style={{ marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '10px' }}>
                                     <h3>Team Scores</h3>

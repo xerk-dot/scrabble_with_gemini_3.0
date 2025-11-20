@@ -21,13 +21,14 @@ export const Game: React.FC = () => {
     const [aiDifficulty2, setAiDifficulty2] = useState<'EASY' | 'MEDIUM' | 'HARD'>('HARD');
     const [theme, setTheme] = useState<'classic' | 'theme1' | 'theme2'>('classic');
     const [showTeamColors, setShowTeamColors] = useState(true); // Toggle for team tile colors
+    const [mustStartOnStar, setMustStartOnStar] = useState(false); // Mega Board rule: first move must be on star
 
     // 4x4 Team AI Configuration (8 AIs total)
     const [teamAiConfigs, setTeamAiConfigs] = useState<Array<{
         difficulty: 'EASY' | 'MEDIUM' | 'HARD';
         useHeuristics: boolean;
     }>>(
-        Array(8).fill({ difficulty: 'MEDIUM', useHeuristics: false })
+        Array(8).fill({ difficulty: 'HARD', useHeuristics: false })
     );
 
     // Pan/Zoom State
@@ -248,58 +249,84 @@ export const Game: React.FC = () => {
                             <button onClick={() => passTurn()} className={styles.button}>Pass</button>
                             <button onClick={() => resignTurn()} className={`${styles.button} ${styles.resignBtn}`}>Resign</button>
                         </div>
-                        <div className={styles.gameInfo}>
-                            <div>Tiles Left: {gameState.bag.length}</div>
-                            <div className={styles.settings}>
+
+                        {/* Game Settings */}
+                        <div className={styles.settingsContainer}>
+                            <h3 className={styles.settingsHeader}>Game Settings</h3>
+
+                            <div className={styles.settingGroup}>
+                                <label className={styles.settingLabel}>Board Variant</label>
                                 <select className={styles.select} value={selectedVariant} onChange={handleVariantChange}>
-                                    <option value="STANDARD">Standard Board (15x15)</option>
+                                    <option value="STANDARD">Standard (15x15)</option>
                                     <option value="BONUS_BLITZ">Bonus Blitz</option>
                                     <option value="RANDOM">Random</option>
                                     <option value="HAZARDS">Hazards</option>
-                                    <option value="MEGA">Mega Board (3x3)</option>
+                                    <option value="MEGA">Mega Board (45x45)</option>
                                 </select>
+                            </div>
 
+                            <div className={styles.settingGroup}>
+                                <label className={styles.settingLabel}>Game Mode</label>
                                 <select className={styles.select} value={mode} onChange={handleModeChange}>
                                     <option value="HUMAN_VS_AI">Human vs AI</option>
                                     <option value="AI_VS_AI">AI vs AI</option>
-                                    {selectedVariant === 'MEGA' && <option value="TEAMS">Teams (Mega Only)</option>}
+                                    {selectedVariant === 'MEGA' && <option value="TEAMS">Teams (8 AIs)</option>}
                                 </select>
-                                <select
-                                    value={difficulty}
-                                    onChange={handleDifficultyChange}
-                                    className={styles.select}
-                                >
+                            </div>
+
+                            <div className={styles.settingGroup}>
+                                <label className={styles.settingLabel}>AI Difficulty</label>
+                                <select value={difficulty} onChange={handleDifficultyChange} className={styles.select}>
                                     <option value="EASY">Easy</option>
                                     <option value="MEDIUM">Medium</option>
                                     <option value="HARD">Hard</option>
                                 </select>
+                            </div>
 
-                                {isAiVsAi && (
+                            {isAiVsAi && (
+                                <div className={styles.settingGroup}>
+                                    <label className={styles.settingLabel}>AI 2 Difficulty</label>
                                     <select
                                         value={aiDifficulty2}
                                         onChange={(e) => setAiDifficulty2(e.target.value as 'EASY' | 'MEDIUM' | 'HARD')}
                                         className={styles.select}
                                     >
-                                        <option value="EASY">AI 2: Easy</option>
-                                        <option value="MEDIUM">AI 2: Medium</option>
-                                        <option value="HARD">AI 2: Hard</option>
+                                        <option value="EASY">Easy</option>
+                                        <option value="MEDIUM">Medium</option>
+                                        <option value="HARD">Hard</option>
                                     </select>
-                                )}
-                            </div>
+                                </div>
+                            )}
 
-                            {/* 4x4 Team AI Configuration */}
-                            {isTeams && selectedVariant === 'MEGA' && (
-                                <div className={styles.teamConfig}>
-                                    <h3>Team AI Configuration</h3>
-
+                            {/* Mega Board Options */}
+                            {selectedVariant === 'MEGA' && (
+                                <div className={styles.settingGroup}>
                                     <label className={styles.teamColorToggle}>
                                         <input
                                             type="checkbox"
-                                            checked={showTeamColors}
-                                            onChange={(e) => setShowTeamColors(e.target.checked)}
+                                            checked={mustStartOnStar}
+                                            onChange={(e) => setMustStartOnStar(e.target.checked)}
                                         />
-                                        Show Team Colors on Tiles
+                                        First move must be on star (★)
                                     </label>
+                                </div>
+                            )}
+
+                            {/* Team Configuration */}
+                            {isTeams && selectedVariant === 'MEGA' && (
+                                <>
+                                    <h3 className={styles.settingsHeader}>Team Configuration</h3>
+
+                                    <div className={styles.settingGroup}>
+                                        <label className={styles.teamColorToggle}>
+                                            <input
+                                                type="checkbox"
+                                                checked={showTeamColors}
+                                                onChange={(e) => setShowTeamColors(e.target.checked)}
+                                            />
+                                            Show Team Colors on Tiles
+                                        </label>
+                                    </div>
 
                                     <div className={styles.teamConfigGrid}>
                                         {['Red', 'Blue'].map((team, teamIdx) => (
@@ -348,15 +375,19 @@ export const Game: React.FC = () => {
                                             </div>
                                         ))}
                                     </div>
-                                </div>
+                                </>
                             )}
 
                             <button
-                                onClick={() => startGame(selectedVariant, difficulty, mode, aiDifficulty2, teamAiConfigs)}
-                                className={styles.button}
+                                onClick={() => startGame(selectedVariant, difficulty, mode, aiDifficulty2, teamAiConfigs, mustStartOnStar)}
+                                className={`${styles.button} ${styles.newGameBtn}`}
                             >
                                 {isTeams && selectedVariant === 'MEGA' ? 'Start 4x4 AI Battle' : 'New Game'}
                             </button>
+                        </div>
+
+                        <div className={styles.gameInfo}>
+                            <div>Tiles Left: {gameState.bag.length}</div>
                         </div>
                     </div>
                 </div>

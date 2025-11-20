@@ -28,6 +28,7 @@ export interface Player {
     useHeuristics?: boolean; // Enable strategic heuristics for this AI
     resigned?: boolean;
     teamId?: string;
+    movesMade?: number; // Track number of moves made by this player
 }
 
 export type GameMode = 'HUMAN_VS_AI' | 'AI_VS_AI' | 'TEAMS';
@@ -42,6 +43,7 @@ export interface GameState {
     moveHistory: Move[];
     gameMode?: GameMode;
     teamScores?: Record<string, number>;
+    mustStartOnStar?: boolean; // Mega Board rule: first move of each player must be on a star
 }
 
 export interface Move {

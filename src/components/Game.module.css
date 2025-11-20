@@ -431,6 +431,43 @@
     border-radius: 0;
 }
 
+/* Settings Container */
+.settingsContainer {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.settingsHeader {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    font-weight: bold;
+    color: #ecf0f1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 8px;
+}
+
+.settingGroup {
+    margin-bottom: 12px;
+}
+
+.settingLabel {
+    display: block;
+    font-size: 13px;
+    color: #bdc3c7;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.newGameBtn {
+    width: 100%;
+    margin-top: 15px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
 .settings {
     display: flex;
     gap: 10px;
@@ -770,6 +807,7 @@
     color: #dc965a;
     text-shadow: none;
 }
+
 /* Team Configuration Styles */
 .teamConfig {
     margin-top: 20px;

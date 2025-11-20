@@ -9,7 +9,9 @@ export interface PlacedTile {
 export const validateMove = (
     board: BoardState,
     placedTiles: PlacedTile[],
-    isFirstMove: boolean
+    isFirstMove: boolean,
+    currentPlayer?: { movesMade?: number },
+    mustStartOnStar?: boolean
 ): { isValid: boolean; message?: string; words?: string[] } => {
     if (placedTiles.length === 0) {
         return { isValid: false, message: 'No tiles placed.' };
@@ -57,7 +59,42 @@ export const validateMove = (
     const rows = board.length;
     const cols = board[0].length;
 
-    // 3. Check connectivity for first move vs subsequent moves
+    // 3. Check mustStartOnStar rule (Mega Board only)
+    // Rule: Each player's first move must be on a star. After all players have made their first move, normal rules apply.
+    if (mustStartOnStar && currentPlayer && (currentPlayer.movesMade === 0 || currentPlayer.movesMade === undefined)) {
+        // This is the player's first move - must be on a star
+        const coversStart = placedTiles.some((t) => board[t.y][t.x].bonus === 'START');
+        if (!coversStart) {
+            return { isValid: false, message: 'Your first move must cover a star square (★).' };
+        }
+
+        // CRITICAL: First move must NOT connect to tiles on OTHER stars or non-star squares
+        // It's OK for tiles to be adjacent to each other if they're all on the SAME star
+        // Create a set of positions for tiles being placed in this move
+        const placedPositions = new Set(placedTiles.map(pt => `${pt.x},${pt.y}`));
+
+        // Check if any placed tile is adjacent to an existing tile (not part of current move)
+        for (const pt of placedTiles) {
+            const neighbors = [
+                { x: pt.x + 1, y: pt.y },
+                { x: pt.x - 1, y: pt.y },
+                { x: pt.x, y: pt.y + 1 },
+                { x: pt.x, y: pt.y - 1 },
+            ];
+
+            for (const n of neighbors) {
+                if (n.x >= 0 && n.x < cols && n.y >= 0 && n.y < rows) {
+                    // Check if this neighbor has a tile AND is not part of the current move
+                    if (board[n.y][n.x].tile && !placedPositions.has(`${n.x},${n.y}`)) {
+                        // There's an existing tile adjacent - this is not allowed for first moves
+                        return { isValid: false, message: 'Your first move must be independent - do not connect to existing words.' };
+                    }
+                }
+            }
+        }
+    }
+
+    // 4. Check connectivity for first move vs subsequent moves
     if (isFirstMove) {
         const coversStart = placedTiles.some((t) => board[t.y][t.x].bonus === 'START');
         if (!coversStart) {
@@ -67,35 +104,47 @@ export const validateMove = (
             return { isValid: false, message: 'First move must consist of at least two letters.' };
         }
     } else {
-        // Must connect to existing tiles either by overlapping (which is impossible as we check empty squares before placement usually)
-        // OR by being adjacent to an existing tile.
-        // We already checked if we bridged a gap over an existing tile above.
-        // Now check adjacency for the whole group.
+        // For subsequent moves, must connect to existing words
+        // UNLESS player must start on star independently (first move with mustStartOnStar rule)
+        const mustPlaceIndependently = mustStartOnStar && currentPlayer && (currentPlayer.movesMade === 0 || currentPlayer.movesMade === undefined);
 
-        if (!connectedToExisting) {
-            // Check adjacency
+        if (!mustPlaceIndependently) {
+            // Normal connectivity check
+            let connectedToExisting = false;
+
+            // Check if any placed tile uses an existing tile
             for (const pt of placedTiles) {
-                const neighbors = [
-                    { x: pt.x + 1, y: pt.y },
-                    { x: pt.x - 1, y: pt.y },
-                    { x: pt.x, y: pt.y + 1 },
-                    { x: pt.x, y: pt.y - 1 },
-                ];
+                if (board[pt.y][pt.x].tile) {
+                    connectedToExisting = true;
+                    break;
+                }
+            }
 
-                for (const n of neighbors) {
-                    if (n.x >= 0 && n.x < cols && n.y >= 0 && n.y < rows) {
-                        if (board[n.y][n.x].tile) {
-                            connectedToExisting = true;
-                            break;
+            if (!connectedToExisting) {
+                // Check adjacency
+                for (const pt of placedTiles) {
+                    const neighbors = [
+                        { x: pt.x + 1, y: pt.y },
+                        { x: pt.x - 1, y: pt.y },
+                        { x: pt.x, y: pt.y + 1 },
+                        { x: pt.x, y: pt.y - 1 },
+                    ];
+
+                    for (const n of neighbors) {
+                        if (n.x >= 0 && n.x < cols && n.y >= 0 && n.y < rows) {
+                            if (board[n.y][n.x].tile) {
+                                connectedToExisting = true;
+                                break;
+                            }
                         }
                     }
+                    if (connectedToExisting) break;
                 }
-                if (connectedToExisting) break;
             }
-        }
 
-        if (!connectedToExisting) {
-            return { isValid: false, message: 'Tiles must be connected to existing words.' };
+            if (!connectedToExisting) {
+                return { isValid: false, message: 'Tiles must be connected to existing words.' };
+            }
         }
     }
 

@@ -66,7 +66,9 @@ export async function generateAiMove(
     rack: Tile[],
     difficulty: 'EASY' | 'MEDIUM' | 'HARD',
     useHeuristics: boolean = false,
-    playerName?: string
+    playerName?: string,
+    currentPlayer?: { movesMade?: number },
+    mustStartOnStar?: boolean
 ): Promise<AiMoveResult | null> {
     const startTime = Date.now();
 
@@ -74,10 +76,12 @@ export async function generateAiMove(
     const dawg = loadDAWG();
 
     // Find anchors
-    const anchors = findAnchors(board);
+    const anchors = findAnchors(board, mustStartOnStar, currentPlayer);
+
+    console.log(`Found ${anchors.length} anchors for ${playerName || 'AI'} (movesMade: ${currentPlayer?.movesMade}, mustStartOnStar: ${mustStartOnStar})`);
 
     if (anchors.length === 0) {
-        console.log('No anchors found');
+        console.log('No anchors found - AI cannot make a move');
         return null;
     }
 
@@ -93,7 +97,11 @@ export async function generateAiMove(
     const isEmptyBoard = isEmptyBoardCheck(board);
     let allCandidateWords = [...rackWords];
 
-    if (!isEmptyBoard) {
+    // IMPORTANT: Skip board-aware expansion if player must start on star
+    // They cannot connect to existing tiles, so board letters are irrelevant
+    const skipBoardAware = mustStartOnStar && currentPlayer && (currentPlayer.movesMade === 0 || currentPlayer.movesMade === undefined);
+
+    if (!isEmptyBoard && !skipBoardAware) {
         // On non-empty boards, we need to consider words that use board tiles
         // The tryPlaceWord function already handles this, so we just need more word candidates
         // Load a broader set of words that could potentially use board letters
@@ -125,6 +133,8 @@ export async function generateAiMove(
         // Remove duplicates
         allCandidateWords = Array.from(new Set(allCandidateWords));
         console.log(`Expanded to ${allCandidateWords.length} candidate words (including board-aware)`);
+    } else if (skipBoardAware) {
+        console.log(`Skipping board-aware expansion - player must start on star independently`);
     }
 
     if (allCandidateWords.length === 0) {
@@ -159,13 +169,15 @@ export async function generateAiMove(
                         anchor.y,
                         isHorizontal,
                         offset,
-                        crossSets
+                        crossSets,
+                        mustStartOnStar,
+                        currentPlayer
                     );
 
                     if (move) {
                         // Validate the move
                         const isEmptyBoard = isEmptyBoardCheck(board);
-                        const validation = validateMove(board, move.tiles, isEmptyBoard);
+                        const validation = validateMove(board, move.tiles, isEmptyBoard, currentPlayer, mustStartOnStar);
 
                         if (validation.isValid && validation.words && validation.words.length > 0) {
                             // Validate all formed words
@@ -282,24 +294,63 @@ export async function generateAiMove(
 /**
  * Find all anchor positions on the board
  */
-function findAnchors(board: BoardState): Array<{ x: number; y: number }> {
+function findAnchors(
+    board: BoardState,
+    mustStartOnStar?: boolean,
+    currentPlayer?: { movesMade?: number }
+): Array<{ x: number; y: number }> {
     const anchors: Array<{ x: number; y: number }> = [];
     const rows = board.length;
     const cols = board[0]?.length || 0;
     let isEmptyBoard = true;
 
+    // Check if board has any tiles
     for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
             if (board[y][x].tile) {
                 isEmptyBoard = false;
-                // Check neighbors for empty squares
-                const neighbors = [
-                    { x: x + 1, y }, { x: x - 1, y },
-                    { x, y: y + 1 }, { x, y: y - 1 }
-                ];
-                for (const n of neighbors) {
-                    if (n.x >= 0 && n.x < cols && n.y >= 0 && n.y < rows && !board[n.y][n.x].tile) {
-                        anchors.push(n);
+                break;
+            }
+        }
+        if (!isEmptyBoard) break;
+    }
+
+    // Special case: mustStartOnStar rule and player hasn't made first move
+    // Return ONLY unoccupied star tiles, ignore all other anchors
+    if (mustStartOnStar && currentPlayer && (currentPlayer.movesMade === 0 || currentPlayer.movesMade === undefined)) {
+        let totalStars = 0;
+        let occupiedStars = 0;
+
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+                if (board[y][x].bonus === 'START') {
+                    totalStars++;
+                    if (board[y][x].tile) {
+                        occupiedStars++;
+                    } else {
+                        // Only include star tiles that are NOT occupied
+                        anchors.push({ x, y });
+                    }
+                }
+            }
+        }
+        return anchors;
+    }
+
+    // Normal anchor finding logic
+    if (!isEmptyBoard) {
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+                if (board[y][x].tile) {
+                    // Check neighbors for empty squares
+                    const neighbors = [
+                        { x: x + 1, y }, { x: x - 1, y },
+                        { x, y: y + 1 }, { x, y: y - 1 }
+                    ];
+                    for (const n of neighbors) {
+                        if (n.x >= 0 && n.x < cols && n.y >= 0 && n.y < rows && !board[n.y][n.x].tile) {
+                            anchors.push(n);
+                        }
                     }
                 }
             }
@@ -342,7 +393,9 @@ function tryPlaceWord(
     anchorY: number,
     isHorizontal: boolean,
     offset: number,
-    crossSets: Map<string, any>
+    crossSets: Map<string, any>,
+    mustStartOnStar?: boolean,
+    currentPlayer?: { movesMade?: number }
 ): { tiles: PlacedTile[] } | null {
     const rows = board.length;
     const cols = board[0]?.length || 0;
@@ -360,6 +413,9 @@ function tryPlaceWord(
     const placedTiles: PlacedTile[] = [];
     const tempRack = [...rack];
 
+    // Check if player must start independently on a star
+    const mustPlaceIndependently = mustStartOnStar && currentPlayer && (currentPlayer.movesMade === 0 || currentPlayer.movesMade === undefined);
+
     for (let i = 0; i < word.length; i++) {
         const x = isHorizontal ? startX + i : startX;
         const y = isHorizontal ? startY : startY + i;
@@ -367,6 +423,11 @@ function tryPlaceWord(
         const boardTile = board[y][x].tile;
 
         if (boardTile) {
+            // There's already a tile here
+            if (mustPlaceIndependently) {
+                // Player must start independently - cannot use existing tiles
+                return null;
+            }
             // Must match existing tile
             if (boardTile.letter !== letter) {
                 return null;

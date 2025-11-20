@@ -1,17 +1,18 @@
-import { BOARD_SIZE, BOARD_VARIANTS, BoardVariant, TILE_DISTRIBUTION } from './constants';
+import { BOARD_SIZE, MEGA_BOARD_SIZE, BOARD_VARIANTS, BoardVariant, TILE_DISTRIBUTION } from './constants';
 import { BoardState, Tile, Square } from './types';
 
 export const initializeBoard = (variant: BoardVariant = 'STANDARD'): BoardState => {
     const board: BoardState = [];
     let bonusMap = BOARD_VARIANTS[variant];
+    const currentBoardSize = variant === 'MEGA' ? MEGA_BOARD_SIZE : BOARD_SIZE;
 
     if (variant === 'RANDOM') {
         bonusMap = {};
         // Always keep start
         bonusMap['7,7'] = 'START';
 
-        for (let y = 0; y < BOARD_SIZE; y++) {
-            for (let x = 0; x < BOARD_SIZE; x++) {
+        for (let y = 0; y < currentBoardSize; y++) {
+            for (let x = 0; x < currentBoardSize; x++) {
                 if (x === 7 && y === 7) continue;
 
                 const rand = Math.random();
@@ -27,8 +28,8 @@ export const initializeBoard = (variant: BoardVariant = 'STANDARD'): BoardState 
         bonusMap = {};
         bonusMap['7,7'] = 'START';
 
-        for (let y = 0; y < BOARD_SIZE; y++) {
-            for (let x = 0; x < BOARD_SIZE; x++) {
+        for (let y = 0; y < currentBoardSize; y++) {
+            for (let x = 0; x < currentBoardSize; x++) {
                 if (x === 7 && y === 7) continue;
 
                 const rand = Math.random();
@@ -44,9 +45,9 @@ export const initializeBoard = (variant: BoardVariant = 'STANDARD'): BoardState 
         }
     }
 
-    for (let y = 0; y < BOARD_SIZE; y++) {
+    for (let y = 0; y < currentBoardSize; y++) {
         const row: Square[] = [];
-        for (let x = 0; x < BOARD_SIZE; x++) {
+        for (let x = 0; x < currentBoardSize; x++) {
             const key = `${x},${y}`;
             row.push({
                 x,
@@ -60,12 +61,13 @@ export const initializeBoard = (variant: BoardVariant = 'STANDARD'): BoardState 
     return board;
 };
 
-export const createTileBag = (): Tile[] => {
+export const createTileBag = (variant: BoardVariant = 'STANDARD'): Tile[] => {
     const bag: Tile[] = [];
     let idCounter = 0;
+    const multiplier = variant === 'MEGA' ? 9 : 1;
 
     Object.entries(TILE_DISTRIBUTION).forEach(([letter, { count, score }]) => {
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < count * multiplier; i++) {
             bag.push({
                 id: `tile-${idCounter++}`,
                 letter,

@@ -10,7 +10,7 @@ interface SquareProps {
 
 export const Square: React.FC<SquareProps> = ({ square }) => {
     const { isOver, setNodeRef } = useDroppable({
-        id: `${square.x},${square.y}`,
+        id: `cell-${square.x}-${square.y}`,
         data: square,
     });
 

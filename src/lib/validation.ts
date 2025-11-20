@@ -54,11 +54,14 @@ export const validateMove = (
         }
     }
 
+    const rows = board.length;
+    const cols = board[0].length;
+
     // 3. Check connectivity for first move vs subsequent moves
     if (isFirstMove) {
-        const coversCenter = placedTiles.some((t) => t.x === 7 && t.y === 7);
-        if (!coversCenter) {
-            return { isValid: false, message: 'First move must cover the center square (★).' };
+        const coversStart = placedTiles.some((t) => board[t.y][t.x].bonus === 'START');
+        if (!coversStart) {
+            return { isValid: false, message: 'First move must cover a center square (★).' };
         }
         if (placedTiles.length < 2) {
             return { isValid: false, message: 'First move must consist of at least two letters.' };
@@ -80,7 +83,7 @@ export const validateMove = (
                 ];
 
                 for (const n of neighbors) {
-                    if (n.x >= 0 && n.x < 15 && n.y >= 0 && n.y < 15) {
+                    if (n.x >= 0 && n.x < cols && n.y >= 0 && n.y < rows) {
                         if (board[n.y][n.x].tile) {
                             connectedToExisting = true;
                             break;
@@ -105,7 +108,7 @@ export const validateMove = (
         let y = startY;
 
         // Find start of word
-        while (x - dx >= 0 && y - dy >= 0 && x - dx < 15 && y - dy < 15 && board[y - dy][x - dx].tile) {
+        while (x - dx >= 0 && y - dy >= 0 && x - dx < cols && y - dy < rows && board[y - dy][x - dx].tile) {
             x -= dx;
             y -= dy;
         }
@@ -114,7 +117,7 @@ export const validateMove = (
         let currentX = x;
         let currentY = y;
 
-        while (currentX >= 0 && currentY >= 0 && currentX < 15 && currentY < 15) {
+        while (currentX >= 0 && currentY >= 0 && currentX < cols && currentY < rows) {
             const tile = board[currentY][currentX].tile || placedTiles.find(t => t.x === currentX && t.y === currentY)?.tile;
             if (!tile) break;
             word += tile.letter;

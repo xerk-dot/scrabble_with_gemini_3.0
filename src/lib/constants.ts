@@ -40,15 +40,45 @@ export const BONUS_BLITZ_BOARD: Record<string, BonusType> = {
   '7,7': 'START',
 };
 
+export const MEGA_BOARD_SIZE = 45;
+
+// Helper to generate Mega Board from Standard Board
+export const generateMegaBoard = (): Record<string, BonusType> => {
+  const megaBoard: Record<string, BonusType> = {};
+  const offsets = [0, 15, 30];
+
+  for (const rowOffset of offsets) {
+    for (const colOffset of offsets) {
+      // Copy standard board to this position
+      Object.entries(STANDARD_BOARD).forEach(([key, bonus]) => {
+        const [x, y] = key.split(',').map(Number);
+        const newX = x + colOffset;
+        const newY = y + rowOffset;
+        megaBoard[`${newX},${newY}`] = bonus;
+      });
+      // Ensure center of each sub-board is a START square
+      megaBoard[`${colOffset + 7},${rowOffset + 7}`] = 'START';
+    }
+  }
+  // And we should probably remove 'START' from the other 8 sub-boards to avoid confusion,
+  // or treat them as just pink squares without the start property.
+  // For now, let's just generate it and ensure 22,22 is START.
+
+  return megaBoard;
+};
+
+export const MEGA_BOARD = generateMegaBoard();
+
+export type BoardVariant = 'STANDARD' | 'BONUS_BLITZ' | 'RANDOM' | 'HAZARDS' | 'MEGA';
+
 // Export a map of variants
 export const BOARD_VARIANTS: Record<string, Record<string, BonusType>> = {
   STANDARD: STANDARD_BOARD,
   BONUS_BLITZ: BONUS_BLITZ_BOARD,
   RANDOM: {}, // Placeholder
   HAZARDS: {}, // Placeholder
+  MEGA: MEGA_BOARD,
 };
-
-export type BoardVariant = 'STANDARD' | 'BONUS_BLITZ' | 'RANDOM' | 'HAZARDS';
 
 export const TILE_DISTRIBUTION: Record<string, { count: number; score: number }> = {
   A: { count: 9, score: 1 },

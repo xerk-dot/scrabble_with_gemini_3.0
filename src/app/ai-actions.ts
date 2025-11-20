@@ -51,8 +51,11 @@ export async function generateAiMove(
     const anchors: { x: number; y: number }[] = [];
     let isEmptyBoard = true;
 
-    for (let y = 0; y < 15; y++) {
-        for (let x = 0; x < 15; x++) {
+    const rows = board.length;
+    const cols = board[0].length;
+
+    for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
             if (board[y][x].tile) {
                 isEmptyBoard = false;
                 // Check neighbors
@@ -61,7 +64,7 @@ export async function generateAiMove(
                     { x, y: y + 1 }, { x, y: y - 1 }
                 ];
                 for (const n of neighbors) {
-                    if (n.x >= 0 && n.x < 15 && n.y >= 0 && n.y < 15 && !board[n.y][n.x].tile) {
+                    if (n.x >= 0 && n.x < cols && n.y >= 0 && n.y < rows && !board[n.y][n.x].tile) {
                         anchors.push(n);
                     }
                 }
@@ -70,7 +73,18 @@ export async function generateAiMove(
     }
 
     if (isEmptyBoard) {
-        anchors.push({ x: 7, y: 7 });
+        // Find all START squares
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+                if (board[y][x].bonus === 'START') {
+                    anchors.push({ x, y });
+                }
+            }
+        }
+        // Fallback if no start squares found (shouldn't happen)
+        if (anchors.length === 0) {
+            anchors.push({ x: Math.floor(cols / 2), y: Math.floor(rows / 2) });
+        }
     }
 
     // Deduplicate anchors
@@ -107,8 +121,8 @@ export async function generateAiMove(
 
                     // Check bounds
                     if (startX < 0 || startY < 0) continue;
-                    if (isRow && startX + word.length > 15) continue;
-                    if (!isRow && startY + word.length > 15) continue;
+                    if (isRow && startX + word.length > cols) continue;
+                    if (!isRow && startY + word.length > rows) continue;
 
                     // Validate placement against board and rack
                     const placedTiles: PlacedTile[] = [];
@@ -165,6 +179,12 @@ export async function generateAiMove(
 
     // 3. Select move based on difficulty
     if (possibleMoves.length === 0) return null;
+
+    // Shuffle possibleMoves to ensure random selection for ties
+    for (let i = possibleMoves.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [possibleMoves[i], possibleMoves[j]] = [possibleMoves[j], possibleMoves[i]];
+    }
 
     // Sort by score descending
     possibleMoves.sort((a, b) => b.score - a.score);

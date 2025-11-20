@@ -12,6 +12,8 @@ export const Rack: React.FC = () => {
         id: 'rack',
     });
 
+    const { shuffleRack, recallAll } = useGame();
+
     if (!player) return null;
 
     return (
@@ -20,6 +22,14 @@ export const Rack: React.FC = () => {
                 {player.rack.map((tile) => (
                     <Tile key={tile.id} tile={tile} id={tile.id} />
                 ))}
+            </div>
+            <div className={styles.rackControls}>
+                <button className={styles.button} onClick={shuffleRack} title="Shuffle Rack">
+                    🔀
+                </button>
+                <button className={styles.button} onClick={recallAll} title="Return Tiles">
+                    ⬇️
+                </button>
             </div>
         </div>
     );

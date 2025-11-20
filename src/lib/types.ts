@@ -25,7 +25,10 @@ export interface Player {
     isAi: boolean;
     difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
     resigned?: boolean;
+    teamId?: string;
 }
+
+export type GameMode = 'HUMAN_VS_AI' | 'AI_VS_AI' | 'TEAMS';
 
 export interface GameState {
     board: BoardState;
@@ -33,8 +36,10 @@ export interface GameState {
     currentPlayerIndex: number;
     bag: Tile[];
     gameOver: boolean;
-    winner: string | null;
+    winner: string | null; // Player ID or Team ID
     moveHistory: Move[];
+    gameMode?: GameMode;
+    teamScores?: Record<string, number>;
 }
 
 export interface Move {

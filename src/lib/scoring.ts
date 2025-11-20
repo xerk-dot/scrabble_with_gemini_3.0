@@ -7,6 +7,10 @@ export const calculateScore = (
 ): number => {
     let totalScore = 0;
 
+    // Get dynamic board dimensions
+    const boardHeight = board.length;
+    const boardWidth = board[0]?.length || 0;
+
     // Determine orientation
     const xs = placedTiles.map((t) => t.x);
     const ys = placedTiles.map((t) => t.y);
@@ -18,7 +22,7 @@ export const calculateScore = (
         let y = startY;
 
         // Find start of word
-        while (x - dx >= 0 && y - dy >= 0 && x - dx < 15 && y - dy < 15 && (board[y - dy][x - dx].tile || placedTiles.some(t => t.x === x - dx && t.y === y - dy))) {
+        while (x - dx >= 0 && y - dy >= 0 && x - dx < boardWidth && y - dy < boardHeight && (board[y - dy][x - dx].tile || placedTiles.some(t => t.x === x - dx && t.y === y - dy))) {
             x -= dx;
             y -= dy;
         }
@@ -30,7 +34,7 @@ export const calculateScore = (
         let currentX = x;
         let currentY = y;
 
-        while (currentX >= 0 && currentY >= 0 && currentX < 15 && currentY < 15) {
+        while (currentX >= 0 && currentY >= 0 && currentX < boardWidth && currentY < boardHeight) {
             const placedTile = placedTiles.find(t => t.x === currentX && t.y === currentY);
             const boardTile = board[currentY][currentX].tile;
             const tile = boardTile || placedTile?.tile;

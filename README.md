@@ -255,9 +255,8 @@ MIT License - see [LICENSE](LICENSE)
 
 ## 🙏 Acknowledgments
 
-- **SOWPODS Dictionary** - [jesstess/Scrabble](https://github.com/jesstess/Scrabble)
 - **Inspiration** - Classic Scrabble by Hasbro
-- **AI Assistant** - Google Gemini 2.0
+- **AI Assistant** - Google Gemini 3.0
 
 ---
 

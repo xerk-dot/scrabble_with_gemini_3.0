@@ -25,6 +25,7 @@ export interface Player {
     score: number;
     isAi: boolean;
     difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
+    useHeuristics?: boolean; // Enable strategic heuristics for this AI
     resigned?: boolean;
     teamId?: string;
 }

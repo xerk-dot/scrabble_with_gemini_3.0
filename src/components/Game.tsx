@@ -5,6 +5,7 @@ import { DndContext, DragEndEvent } from '@dnd-kit/core';
 import { Board } from './Board';
 import { Rack } from './Rack';
 import { Tile as DraggableTile } from './Tile';
+import { GameLogs } from './GameLogs';
 import { useGame } from '@/context/GameContext';
 import { BoardVariant } from '@/lib/constants';
 import { Tile } from '@/lib/types';
@@ -19,6 +20,14 @@ export const Game: React.FC = () => {
     const [mode, setMode] = useState<'HUMAN_VS_AI' | 'AI_VS_AI' | 'TEAMS'>('HUMAN_VS_AI');
     const [aiDifficulty2, setAiDifficulty2] = useState<'EASY' | 'MEDIUM' | 'HARD'>('HARD');
     const [theme, setTheme] = useState<'classic' | 'theme1' | 'theme2'>('classic');
+
+    // 4x4 Team AI Configuration (8 AIs total)
+    const [teamAiConfigs, setTeamAiConfigs] = useState<Array<{
+        difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+        useHeuristics: boolean;
+    }>>(
+        Array(8).fill({ difficulty: 'MEDIUM', useHeuristics: false })
+    );
 
     // Pan/Zoom State
     const [scale, setScale] = useState(selectedVariant === 'MEGA' ? 0.33 : 1);
@@ -272,18 +281,74 @@ export const Game: React.FC = () => {
                                         <option value="HARD">AI 2: Hard</option>
                                     </select>
                                 )}
-
-                                <button
-                                    onClick={() => startGame(selectedVariant, difficulty, mode, aiDifficulty2)}
-                                    className={styles.button}
-                                >
-                                    {isTeams && selectedVariant === 'MEGA' ? 'Start 4x4 AI Battle' : 'New Game'}
-                                </button>
                             </div>
+
+                            {/* 4x4 Team AI Configuration */}
+                            {isTeams && selectedVariant === 'MEGA' && (
+                                <div className={styles.teamConfig}>
+                                    <h3>Team AI Configuration</h3>
+                                    <div className={styles.teamConfigGrid}>
+                                        {['Red', 'Blue'].map((team, teamIdx) => (
+                                            <div key={team} className={styles.teamColumn}>
+                                                <h4 style={{ color: team === 'Red' ? '#e74c3c' : '#3498db' }}>{team} Team</h4>
+                                                {[1, 2, 3, 4].map((aiNum) => {
+                                                    const configIdx = teamIdx * 4 + (aiNum - 1);
+                                                    const config = teamAiConfigs[configIdx];
+                                                    return (
+                                                        <div key={aiNum} className={styles.aiConfigRow}>
+                                                            <span>AI {aiNum}:</span>
+                                                            <select
+                                                                value={config.difficulty}
+                                                                onChange={(e) => {
+                                                                    const newConfigs = [...teamAiConfigs];
+                                                                    newConfigs[configIdx] = {
+                                                                        ...config,
+                                                                        difficulty: e.target.value as 'EASY' | 'MEDIUM' | 'HARD'
+                                                                    };
+                                                                    setTeamAiConfigs(newConfigs);
+                                                                }}
+                                                                className={styles.selectSmall}
+                                                            >
+                                                                <option value="EASY">Easy</option>
+                                                                <option value="MEDIUM">Medium</option>
+                                                                <option value="HARD">Hard</option>
+                                                            </select>
+                                                            <label className={styles.checkboxLabel}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={config.useHeuristics}
+                                                                    onChange={(e) => {
+                                                                        const newConfigs = [...teamAiConfigs];
+                                                                        newConfigs[configIdx] = {
+                                                                            ...config,
+                                                                            useHeuristics: e.target.checked
+                                                                        };
+                                                                        setTeamAiConfigs(newConfigs);
+                                                                    }}
+                                                                />
+                                                                Strategic
+                                                            </label>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <button
+                                onClick={() => startGame(selectedVariant, difficulty, mode, aiDifficulty2, teamAiConfigs)}
+                                className={styles.button}
+                            >
+                                {isTeams && selectedVariant === 'MEGA' ? 'Start 4x4 AI Battle' : 'New Game'}
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <GameLogs />
         </DndContext>
     );
 };

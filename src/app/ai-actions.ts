@@ -7,6 +7,8 @@ import { validateWords } from './actions';
 import { buildDAWG, DAWGNode } from '@/lib/dawg';
 import { generateWordsFromRack } from '@/lib/word-generator';
 import { calculateCrossSets, getCrossSetAt } from '@/lib/cross-sets';
+import { calculateHeuristicScore, getRemainingRack, evaluateRackLeave, evaluateBoardControl } from '@/lib/heuristics';
+import { logAiMove, logHeuristicBreakdown } from '@/lib/gameLogger';
 
 import fs from 'fs';
 import path from 'path';
@@ -50,8 +52,9 @@ const loadDAWG = (): DAWGNode => {
 
 interface AiMoveResult {
     word: string;
-    score: number;
+    score: number; // Actual score awarded
     tiles: PlacedTile[];
+    selectionScore?: number; // Heuristic-adjusted score for move selection only
 }
 
 /**
@@ -61,7 +64,9 @@ interface AiMoveResult {
 export async function generateAiMove(
     board: BoardState,
     rack: Tile[],
-    difficulty: 'EASY' | 'MEDIUM' | 'HARD'
+    difficulty: 'EASY' | 'MEDIUM' | 'HARD',
+    useHeuristics: boolean = false,
+    playerName?: string
 ): Promise<AiMoveResult | null> {
     const startTime = Date.now();
 
@@ -167,16 +172,38 @@ export async function generateAiMove(
                             const invalidWords = await validateWords(validation.words);
 
                             if (invalidWords.length === 0) {
-                                const score = calculateScore(board, move.tiles);
+                                const actualScore = calculateScore(board, move.tiles);
+
+                                // Calculate heuristic score for move selection (if enabled)
+                                // This is ONLY used for choosing which move to make
+                                // The actual score awarded is still the real score
+                                let selectionScore = actualScore;
+                                if (useHeuristics) {
+                                    const remainingRack = getRemainingRack(rack, move.tiles);
+                                    selectionScore = calculateHeuristicScore(
+                                        actualScore,
+                                        remainingRack,
+                                        board,
+                                        move.tiles
+                                    );
+
+                                    // Log significant heuristic adjustments
+                                    const adjustment = selectionScore - actualScore;
+                                    if (Math.abs(adjustment) > 5) {
+                                        console.log(`Heuristic adjustment: ${actualScore} → ${selectionScore.toFixed(1)} (${adjustment > 0 ? '+' : ''}${adjustment.toFixed(1)})`);
+                                    }
+                                }
+
                                 possibleMoves.push({
                                     word: validation.words.join(', '),
-                                    score,
-                                    tiles: move.tiles
+                                    score: actualScore, // ALWAYS use actual score
+                                    tiles: move.tiles,
+                                    selectionScore // Store heuristic score separately for sorting
                                 });
 
-                                // Update best score for alpha-beta pruning
-                                if (score > bestScore) {
-                                    bestScore = score;
+                                // Update best score for alpha-beta pruning (use selection score)
+                                if (selectionScore > bestScore) {
+                                    bestScore = selectionScore;
                                 }
                             }
                         }
@@ -207,19 +234,49 @@ export async function generateAiMove(
         [possibleMoves[i], possibleMoves[j]] = [possibleMoves[j], possibleMoves[i]];
     }
 
-    // Sort by score descending
-    possibleMoves.sort((a, b) => b.score - a.score);
+    // Sort by selection score (heuristic-adjusted) if available, otherwise by actual score
+    possibleMoves.sort((a, b) => {
+        const scoreA = a.selectionScore !== undefined ? a.selectionScore : a.score;
+        const scoreB = b.selectionScore !== undefined ? b.selectionScore : b.score;
+        return scoreB - scoreA;
+    });
 
     // Select based on difficulty
+    let selectedMove: AiMoveResult;
     if (difficulty === 'HARD') {
-        return possibleMoves[0];
+        selectedMove = possibleMoves[0];
     } else if (difficulty === 'MEDIUM') {
         const index = Math.floor(Math.random() * Math.ceil(possibleMoves.length / 2));
-        return possibleMoves[index];
+        selectedMove = possibleMoves[index];
     } else {
         const index = Math.floor(Math.random() * possibleMoves.length);
-        return possibleMoves[index];
+        selectedMove = possibleMoves[index];
     }
+
+    // Log the move if heuristics were used
+    if (useHeuristics && playerName && selectedMove.selectionScore !== undefined) {
+        const remainingRack = getRemainingRack(rack, selectedMove.tiles);
+        const rackLeaveScore = evaluateRackLeave(remainingRack);
+        const boardControlScore = evaluateBoardControl(board, selectedMove.tiles);
+
+        logAiMove(
+            playerName,
+            selectedMove.word,
+            selectedMove.score,
+            selectedMove.selectionScore,
+            rack.map(t => t.letter).join(''),
+            remainingRack.map(t => t.letter).join('')
+        );
+
+        logHeuristicBreakdown(
+            playerName,
+            rackLeaveScore,
+            boardControlScore,
+            selectedMove.selectionScore - selectedMove.score
+        );
+    }
+
+    return selectedMove;
 }
 
 /**

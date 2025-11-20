@@ -33,6 +33,7 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 import { validateMove, PlacedTile } from '@/lib/validation';
 import { calculateScore } from '@/lib/scoring';
 import { validateWords } from '@/app/actions';
+import { initGameLog, logGameEnd } from '@/lib/gameLogger';
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [gameState, setGameState] = useState<GameState>({
@@ -52,7 +53,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: BoardVariant = 'STANDARD',
         difficulty: 'EASY' | 'MEDIUM' | 'HARD' = 'MEDIUM',
         mode: 'HUMAN_VS_AI' | 'AI_VS_AI' | 'TEAMS' = 'HUMAN_VS_AI',
-        difficulty2: 'EASY' | 'MEDIUM' | 'HARD' = 'HARD'
+        difficulty2: 'EASY' | 'MEDIUM' | 'HARD' = 'HARD',
+        teamAiConfigs?: Array<{ difficulty: 'EASY' | 'MEDIUM' | 'HARD'; useHeuristics: boolean }>
     ) => {
         const newBag = createTileBag(variant);
         let players: Player[] = [];
@@ -68,7 +70,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Interleave players: Red 1, Blue 1, Red 2, Blue 2...
             for (let i = 0; i < 4; i++) {
                 for (const team of teams) {
-                    const playerId = `p${playerIndex++}`;
+                    const playerId = `p${playerIndex}`;
+                    const config = teamAiConfigs?.[playerIndex] || { difficulty: 'MEDIUM', useHeuristics: false };
                     const { drawn, newBag } = drawTiles(bag, 7, playerId);
                     bag = newBag;
                     players.push({
@@ -77,9 +80,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         rack: drawn,
                         score: 0,
                         isAi: true,
-                        difficulty: difficulty, // Use selected difficulty for all AIs for now
+                        difficulty: config.difficulty,
+                        useHeuristics: config.useHeuristics,
                         teamId: team,
                     });
+                    playerIndex++;
                 }
             }
         } else {
@@ -114,8 +119,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             teamScores = { 'Team 1': 0, 'Team 2': 0 };
         }
 
+        const newBoard = initializeBoard(variant);
+
+        // Initialize game log (client-side, saved to localStorage)
+        initGameLog(mode, variant);
+
         setGameState({
-            board: initializeBoard(variant),
+            board: newBoard,
             players: players,
             currentPlayerIndex: 0,
             bag: bag,
@@ -146,7 +156,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const bestMove = await generateAiMove(
                         gameState.board,
                         currentPlayer.rack,
-                        currentPlayer.difficulty || 'MEDIUM'
+                        currentPlayer.difficulty || 'MEDIUM',
+                        currentPlayer.useHeuristics || false,
+                        currentPlayer.name
                     );
 
                     // Helper function to check if any teammate can play
@@ -158,7 +170,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             const teammateMove = await generateAiMove(
                                 gameState.board,
                                 teammate.rack,
-                                teammate.difficulty || 'MEDIUM'
+                                teammate.difficulty || 'MEDIUM',
+                                teammate.useHeuristics || false,
+                                teammate.name
                             );
                             if (teammateMove) {
                                 return true;
@@ -438,19 +452,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 winnerId = winningTeam;
                 setMessage(`Game Over! Team ${winningTeam} wins!`);
             } else {
-                const winner = newPlayers.reduce((prev, current) =>
-                    (prev.score > current.score) ? prev : current
-                );
-                winnerId = winner.id;
-                setMessage(`Game Over! ${winner.name} wins with ${winner.score} points!`);
-            }
+                const winner = newPlayers.reduce((max, p) => p.score > max.score ? p : max, newPlayers[0]);
 
-            setGameState(prev => ({
-                ...prev,
-                players: newPlayers,
-                gameOver: true,
-                winner: winnerId
-            }));
+                // Log game end
+                const finalScores: Record<string, number> = {};
+                newPlayers.forEach(p => finalScores[p.name] = p.score);
+                logGameEnd(winner.name, finalScores);
+
+                setMessage(`Game Over! Winner: ${winner.name} with ${winner.score} points`);
+                setGameState(prev => ({
+                    ...prev,
+                    players: newPlayers,
+                    gameOver: true,
+                    winner: winner.name
+                }));
+            }
         } else {
             // Move to next player
             setMessage(`${currentPlayer.name} has resigned.`);
